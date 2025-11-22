@@ -1,0 +1,33 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Build outputs
+dist
+dist-electron
+release
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.sqlite
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

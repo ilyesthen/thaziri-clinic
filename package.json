@@ -1,0 +1,204 @@
+{
+  "name": "thaziri",
+  "version": "1.0.0",
+  "description": "Thaziri - Professional Clinic Management System",
+  "main": "dist-electron/main.js",
+  "author": "Ilyes",
+  "homepage": "https://github.com/ilyes/thaziri",
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "vite",
+    "dev:instance1": "cross-env VITE_PORT=5173 MESSAGING_PORT=45679 vite",
+    "dev:instance2": "cross-env VITE_PORT=5174 MESSAGING_PORT=45680 vite",
+    "build": "npm run prisma:generate && tsc && vite build && electron-builder",
+    "prepare:windows": "node scripts/prepare-windows-build.js",
+    "build:win": "npm run prepare:windows && vite build && electron-builder --win",
+    "build:win32": "npm run prepare:windows && vite build && electron-builder --win --ia32",
+    "build:win64": "npm run prepare:windows && vite build && electron-builder --win --x64",
+    "build:win:all": "npm run prepare:windows && vite build && electron-builder --win --ia32 --x64",
+    "prisma:generate": "prisma generate",
+    "build:mac": "tsc && vite build && electron-builder --mac",
+    "preview": "vite preview",
+    "dist": "npm run build",
+    "pack": "electron-builder --dir",
+    "postinstall": "electron-builder install-app-deps",
+    "db:import-patients": "tsx scripts/import-patients.ts",
+    "db:import-visits": "tsx scripts/import-visit-examinations.ts",
+    "db:import-export": "tsx scripts/import-from-export.ts",
+    "db:import-medicines": "tsx scripts/import-medicines.ts",
+    "db:verify-import": "tsx scripts/verify-import.ts",
+    "db:backup": "tsx scripts/backup-database.ts",
+    "db:restore": "tsx scripts/restore-database.ts",
+    "db:export-for-windows": "tsx scripts/export-for-windows.ts",
+    "db:import-from-mac": "tsx scripts/import-from-mac.ts"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.8.6",
+    "@types/react": "^18.2.31",
+    "@types/react-dom": "^18.2.14",
+    "@types/react-router-dom": "^5.3.3",
+    "@types/xml2js": "^0.4.14",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "@vitejs/plugin-react": "^4.1.0",
+    "app-builder-bin": "^4.2.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^22.3.27",
+    "electron-builder": "^24.6.4",
+    "electron-rebuild": "^3.2.9",
+    "eslint": "^8.51.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.11",
+    "vite-plugin-electron": "^0.15.5",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "wait-on": "^7.0.1",
+    "xml2js": "^0.6.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "@types/uuid": "^10.0.0",
+    "bcryptjs": "^3.0.2",
+    "bytez.js": "^1.1.18",
+    "canvas": "^3.2.0",
+    "electron-store": "^11.0.2",
+    "jsbarcode": "^3.12.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.394",
+    "prisma": "^6.18.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.9.4",
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.8"
+  },
+  "build": {
+    "appId": "com.thaziri.clinic",
+    "productName": "Thaziri",
+    "buildDependenciesFromSource": false,
+    "npmRebuild": false,
+    "beforeBuild": "./scripts/before-build.js",
+    "includeSubNodeModules": true,
+    "afterPack": "./electron-builder-hook.js",
+    "directories": {
+      "output": "release/${version}"
+    },
+    "files": [
+      "dist",
+      "dist-electron",
+      "node_modules/**/*",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}/**",
+      "!node_modules/.cache",
+      "!node_modules/.vite",
+      "node_modules/.prisma/client/**/*",
+      "node_modules/@prisma/client/**/*",
+      "package.json",
+      "prisma/**/*",
+      "node_modules/.prisma/**/*"
+    ],
+    "asarUnpack": [
+      "**/.prisma/**/*",
+      "**/@prisma/**/*",
+      "**/prisma/**/*",
+      "**/*.node",
+      "**/*.dll"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma",
+        "to": "prisma",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/.prisma/client",
+        "to": "app.asar.unpacked/node_modules/.prisma/client"
+      },
+      {
+        "from": "node_modules/@prisma/engines",
+        "to": "app.asar.unpacked/node_modules/@prisma/engines"
+      }
+    ],
+    "mac": {
+      "icon": "resources/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "requireAdministrator",
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "publisherName": "Thaziri Medical Systems",
+      "extraFiles": [
+        {
+          "from": "node_modules/.prisma/client",
+          "to": "resources/app.asar.unpacked/node_modules/.prisma/client",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "node_modules/@prisma/client",
+          "to": "resources/app.asar.unpacked/node_modules/@prisma/client",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "prisma",
+          "to": "resources/prisma",
+          "filter": [
+            "dev.db"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Thaziri",
+      "perMachine": true,
+      "allowElevation": true,
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": false
+    },
+    "linux": {
+      "icon": "resources/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "engines": {
+    "node": "^18.0.0 || >=20.0.0"
+  }
+}
