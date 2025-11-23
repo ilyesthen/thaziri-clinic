@@ -1,0 +1,29 @@
+version: 1.0.{build}
+
+image: Visual Studio 2022
+
+platform:
+  - x64
+
+environment:
+  nodejs_version: "18"
+
+install:
+  - ps: Install-Product node $env:nodejs_version
+  - npm ci --force
+  - npx prisma generate
+
+build_script:
+  - npm run build:win64
+
+artifacts:
+  - path: 'release\**\*.exe'
+    name: WindowsInstaller
+
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: YOUR_GITHUB_TOKEN
+  artifact: WindowsInstaller
+  on:
+    APPVEYOR_REPO_TAG: true

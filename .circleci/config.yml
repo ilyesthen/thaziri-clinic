@@ -1,0 +1,34 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.0.2
+  win: circleci/windows@5.0
+
+jobs:
+  build-windows:
+    executor:
+      name: win/default
+      size: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Node.js
+          command: |
+            choco install nodejs --version=18.0.0 -y
+      - run:
+          name: Install Dependencies
+          command: npm ci --force
+      - run:
+          name: Generate Prisma
+          command: npx prisma generate
+      - run:
+          name: Build Windows App
+          command: npm run build:win64
+      - store_artifacts:
+          path: release
+          destination: windows-installers
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - build-windows
