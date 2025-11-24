@@ -84,11 +84,9 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
     
-    // DevTools can be opened manually with Cmd+Option+I or F12
-    // Uncomment the line below if you need DevTools to open automatically:
-    // if (isDev) {
-    //   mainWindow?.webContents.openDevTools()
-    // }
+    // Open DevTools for debugging (can be closed by user)
+    // Remove this line once white screen issue is resolved
+    mainWindow?.webContents.openDevTools()
   })
 
   // Handle window closed
@@ -116,7 +114,39 @@ function createWindow(): void {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    // Production: Try multiple possible paths for cross-platform compatibility
+    const fs = require('fs')
+    const possiblePaths = [
+      path.join(__dirname, '..', 'dist', 'index.html'),           // Standard packaging
+      path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html'),  // ASAR in resources
+      path.join(process.resourcesPath, 'app', 'dist', 'index.html'),       // Unpacked in resources
+      path.join(__dirname, '..', '..', 'dist', 'index.html'),     // Alternative structure
+      path.join(app.getAppPath(), 'dist', 'index.html')           // Using app path
+    ]
+
+    console.log('🔍 Searching for index.html...')
+    console.log('__dirname:', __dirname)
+    console.log('process.resourcesPath:', process.resourcesPath)
+    console.log('app.getAppPath():', app.getAppPath())
+
+    let indexPath = null
+    for (const tryPath of possiblePaths) {
+      console.log('Trying:', tryPath)
+      if (fs.existsSync(tryPath)) {
+        indexPath = tryPath
+        console.log('✅ Found index.html at:', indexPath)
+        break
+      }
+    }
+
+    if (indexPath && mainWindow) {
+      mainWindow.loadFile(indexPath)
+    } else {
+      console.error('❌ Could not find index.html in any expected location')
+      console.error('Searched paths:', possiblePaths)
+      // Show error dialog
+      dialog.showErrorBox('Startup Error', 'Could not load application files. Please reinstall the application.')
+    }
   }
 
   // Set main window reference for messaging service
