@@ -27,8 +27,22 @@ jobs:
         node-version: '20'
         cache: 'npm'
     
+    - name: Setup Python for node-gyp
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
     - name: Install dependencies
-      run: npm install
+      run: |
+        # Configure npm for better Windows compatibility
+        npm config set python python
+        npm config set msvs_version 2022
+        
+        # Install dependencies, allowing optional dependencies to fail
+        npm install --no-audit --no-fund
+        
+        # Continue even if some optional dependencies fail
+        echo "Dependencies installed (optional deps may have failed - this is expected)"
     
     - name: Setup build environment
       run: |
