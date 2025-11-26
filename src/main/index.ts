@@ -4,8 +4,8 @@ import * as db from './database'
 import NetworkDiscoveryService from './services/NetworkDiscoveryService'
 import MessagingService from './services/MessagingService'
 import registerOrdonnanceHandlers from './services/ordonnanceService'
-import { DatabaseManager } from './database-manager'
-import { DatabaseSetupManager } from './setup/database-setup'
+import { BUILD_CONFIG, detectBuildMode } from './build-config'
+import { DatabaseApiServer } from './api-server'
 
 // Prevent system sleep
 let powerSaveBlockerId: number | null = null
@@ -48,6 +48,13 @@ const getStore = () => {
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null
 
+// API server for server mode
+let apiServer: DatabaseApiServer | null = null
+
+// Determine build mode
+const buildMode = detectBuildMode()
+const config = BUILD_CONFIG.getCurrentConfig()
+
 // Check if we're in development mode
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -84,9 +91,11 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
     
-    // Open DevTools for debugging (can be closed by user)
-    // Remove this line once white screen issue is resolved
-    mainWindow?.webContents.openDevTools()
+    // DevTools can be opened manually with Cmd+Option+I or F12
+    // Uncomment the line below if you need DevTools to open automatically:
+    // if (isDev) {
+    //   mainWindow?.webContents.openDevTools()
+    // }
   })
 
   // Handle window closed
@@ -114,39 +123,7 @@ function createWindow(): void {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
-    // Production: Try multiple possible paths for cross-platform compatibility
-    const fs = require('fs')
-    const possiblePaths = [
-      path.join(__dirname, '..', 'dist', 'index.html'),           // Standard packaging
-      path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html'),  // ASAR in resources
-      path.join(process.resourcesPath, 'app', 'dist', 'index.html'),       // Unpacked in resources
-      path.join(__dirname, '..', '..', 'dist', 'index.html'),     // Alternative structure
-      path.join(app.getAppPath(), 'dist', 'index.html')           // Using app path
-    ]
-
-    console.log('🔍 Searching for index.html...')
-    console.log('__dirname:', __dirname)
-    console.log('process.resourcesPath:', process.resourcesPath)
-    console.log('app.getAppPath():', app.getAppPath())
-
-    let indexPath = null
-    for (const tryPath of possiblePaths) {
-      console.log('Trying:', tryPath)
-      if (fs.existsSync(tryPath)) {
-        indexPath = tryPath
-        console.log('✅ Found index.html at:', indexPath)
-        break
-      }
-    }
-
-    if (indexPath && mainWindow) {
-      mainWindow.loadFile(indexPath)
-    } else {
-      console.error('❌ Could not find index.html in any expected location')
-      console.error('Searched paths:', possiblePaths)
-      // Show error dialog
-      dialog.showErrorBox('Startup Error', 'Could not load application files. Please reinstall the application.')
-    }
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
   // Set main window reference for messaging service
@@ -156,32 +133,29 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
-  // Check and show database setup if needed
-  const setupManager = new DatabaseSetupManager()
-  const setupComplete = await setupManager.checkAndShowSetup()
+  console.log(`🏗️  Starting Thaziri in ${buildMode} mode`)
   
-  if (!setupComplete) {
-    app.quit()
-    return
-  }
-  
-  // Initialize database manager with the configured mode
-  const dbManager = DatabaseManager.getInstance()
+  // Initialize database connection
   try {
-    await dbManager.initialize()
-    console.log('✅ Database manager initialized')
-    
-    // Initialize legacy database for compatibility
     await db.initializeDatabase()
     
     // Register ordonnance IPC handlers after database is ready
     registerOrdonnanceHandlers()
-    console.log('✅ Ordonnance handlers registered')
   } catch (error) {
     console.error('Failed to initialize database:', error)
-    dialog.showErrorBox('Database Error', 'Failed to initialize database: ' + error)
-    app.quit()
-    return
+  }
+
+  // Start API server if in server mode
+  if (buildMode === 'server' && config.enableApiServer) {
+    try {
+      const serverConfig = config as any // Type assertion since we know it's server mode
+      apiServer = new DatabaseApiServer(serverConfig.apiPort)
+      await apiServer.start()
+      console.log(`🌐 Database API server started - LAN access enabled`)
+      console.log(`   Connect clients to: http://${apiServer.getLocalIP()}:${serverConfig.apiPort}`)
+    } catch (error) {
+      console.error('Failed to start API server:', error)
+    }
   }
 
   // Initialize network discovery service
@@ -228,8 +202,6 @@ app.whenReady().then(async () => {
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', async () => {
   if (process.platform !== 'darwin') {
-    const dbManager = DatabaseManager.getInstance()
-    await dbManager.shutdown()
     await db.disconnectDatabase()
     app.quit()
   }
@@ -257,9 +229,15 @@ app.on('before-quit', async () => {
   const networkService = NetworkDiscoveryService.getInstance()
   networkService.shutdown()
   
-  // Shutdown database manager
-  const dbManager = DatabaseManager.getInstance()
-  await dbManager.shutdown()
+  // Stop API server if running
+  if (apiServer) {
+    try {
+      await apiServer.stop()
+      console.log('🌐 Database API server stopped')
+    } catch (error) {
+      console.error('Error stopping API server:', error)
+    }
+  }
   
   await db.disconnectDatabase()
 })
