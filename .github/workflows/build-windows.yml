@@ -9,7 +9,8 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-2019  # Windows 2019 for better Windows 7 compatibility
+    runs-on: windows-latest  # Windows Server 2022 - latest stable runner
+    # Note: Built apps will still be compatible with Windows 7-11
     
     strategy:
       matrix:

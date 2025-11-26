@@ -121,7 +121,9 @@
             "ia32"
           ]
         }
-      ]
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false
     },
     "linux": {
       "icon": "resources/icon.png",
