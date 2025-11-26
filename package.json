@@ -18,7 +18,6 @@
     "dist:server": "npm run build:server",
     "dist:client": "npm run build:client",
     "pack": "electron-builder --dir",
-    "postinstall": "electron-builder install-app-deps",
     "db:import-patients": "tsx scripts/import-patients.ts",
     "db:import-visits": "tsx scripts/import-visit-examinations.ts",
     "db:import-export": "tsx scripts/import-from-export.ts",
@@ -82,6 +81,8 @@
     "productName": "Thaziri",
     "buildDependenciesFromSource": false,
     "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "beforeBuild": null,
     "directories": {
       "output": "release/${version}"
     },
