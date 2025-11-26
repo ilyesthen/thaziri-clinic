@@ -34,6 +34,26 @@ jobs:
         echo "BUILD_MODE=${{ matrix.build_mode }}" >> $env:GITHUB_ENV
         echo "BUILD_ARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
     
+    - name: Configure build mode
+      run: |
+        if ("${{ matrix.build_mode }}" -eq "server") {
+          echo "Configuring SERVER build mode"
+          # Copy server mode indicator
+          Copy-Item ".server-mode" "resources/.server-mode" -Force
+          # Update product name for server
+          $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+          $packageJson.build.productName = "Thaziri Server"
+          $packageJson | ConvertTo-Json -Depth 10 | Set-Content "package.json"
+        } else {
+          echo "Configuring CLIENT build mode"
+          # Copy client mode indicator  
+          Copy-Item ".client-mode" "resources/.client-mode" -Force
+          # Update product name for client
+          $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+          $packageJson.build.productName = "Thaziri Client"
+          $packageJson | ConvertTo-Json -Depth 10 | Set-Content "package.json"
+        }
+    
     - name: Build Electron app
       run: |
         if ("${{ matrix.build_mode }}" -eq "server") {

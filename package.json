@@ -23,7 +23,8 @@
     "db:import-visits": "tsx scripts/import-visit-examinations.ts",
     "db:import-export": "tsx scripts/import-from-export.ts",
     "db:import-medicines": "tsx scripts/import-medicines.ts",
-    "db:verify-import": "tsx scripts/verify-import.ts"
+    "db:verify-import": "tsx scripts/verify-import.ts",
+    "db:migrate-to-server": "tsx scripts/migrate-sqlite-to-server.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -84,9 +85,19 @@
     },
     "files": [
       "dist",
-      "dist-electron",
+      "dist-electron", 
       "node_modules",
-      "package.json"
+      "package.json",
+      {
+        "from": ".server-mode",
+        "to": ".server-mode",
+        "filter": "**/*"
+      },
+      {
+        "from": ".client-mode", 
+        "to": ".client-mode",
+        "filter": "**/*"
+      }
     ],
     "mac": {
       "icon": "resources/icon.icns",

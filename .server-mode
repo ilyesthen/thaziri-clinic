@@ -1,0 +1,8 @@
+THAZIRI_SERVER_MODE=true
+# This file indicates this is a server build
+# Install this version on the admin PC that will host the database
+# This version includes:
+# - PostgreSQL database server
+# - HTTP API server for client connections
+# - Database migration tools
+# - Full Thaziri application functionality

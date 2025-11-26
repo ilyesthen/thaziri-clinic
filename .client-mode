@@ -1,0 +1,8 @@
+THAZIRI_CLIENT_MODE=true
+# This file indicates this is a client build
+# Install this version on PCs that will connect to the admin PC
+# This version includes:
+# - Full Thaziri application functionality
+# - Network connection to server database
+# - No local database or server components
+# Configure server IP address in application settings
