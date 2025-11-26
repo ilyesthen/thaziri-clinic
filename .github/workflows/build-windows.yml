@@ -1,82 +1,99 @@
-name: Build Windows Installers
+name: Build Windows Apps (Server & Client)
 
 on:
   push:
+    branches: [ main, develop ]
+  pull_request:
     branches: [ main ]
-    tags:
-      - 'v*'
   workflow_dispatch:
-
-permissions:
-  contents: write
-  packages: write
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2019  # Windows 2019 for better Windows 7 compatibility
+    
+    strategy:
+      matrix:
+        build_mode: [server, client]
+        arch: [x64, ia32]
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: |
-          npm ci --force
-          npm install -g node-gyp
-      
-      - name: Generate Prisma Client
-        run: |
-          npx prisma generate --schema=./prisma/schema.prisma
-      
-      - name: Copy Prisma binaries
-        run: |
-          xcopy /E /I node_modules\.prisma node_modules\@prisma\client\.prisma
-      
-      - name: Build Electron App
-        run: |
-          npm run build:win:all
-        env:
-          CI: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload Windows x64 Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-x64-installer
-          path: release/**/Thaziri-Setup-*-x64.exe
-      
-      - name: Upload Windows x32 Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-ia32-installer
-          path: release/**/Thaziri-Setup-*-ia32.exe
-      
-      - name: Upload Universal Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-universal-installer
-          path: release/**/Thaziri-Setup-*.exe
-          
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        continue-on-error: true
-        with:
-          files: |
-            release/**/Thaziri-Setup-*.exe
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: List built files
-        run: |
-          dir release\1.0.0\*.exe
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Setup build environment
+      run: |
+        echo "BUILD_MODE=${{ matrix.build_mode }}" >> $env:GITHUB_ENV
+        echo "BUILD_ARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
+    
+    - name: Build Electron app
+      run: |
+        if ("${{ matrix.build_mode }}" -eq "server") {
+          npm run build:server -- --win --${{ matrix.arch }}
+        } else {
+          npm run build:client -- --win --${{ matrix.arch }}
+        }
+      env:
+        BUILD_MODE: ${{ matrix.build_mode }}
+    
+    - name: Create artifact name
+      id: artifact-name
+      run: |
+        $artifactName = "thaziri-${{ matrix.build_mode }}-windows-${{ matrix.arch }}"
+        echo "name=$artifactName" >> $env:GITHUB_OUTPUT
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.artifact-name.outputs.name }}
+        path: |
+          release/**/*.exe
+          release/**/*.msi
+          release/**/*.zip
+        retention-days: 30
+    
+    - name: Upload to release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/**/*.exe
+          release/**/*.msi
+        draft: true
+        prerelease: contains(github.ref, 'beta') || contains(github.ref, 'alpha')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-info:
+    runs-on: ubuntu-latest
+    needs: build-windows
+    if: always()
+    
+    steps:
+    - name: Build Summary
+      run: |
+        echo "## Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Build Mode | Architecture | Status |" >> $GITHUB_STEP_SUMMARY  
+        echo "|------------|--------------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Server | x64 | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Server | ia32 | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Client | x64 | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY  
+        echo "| Client | ia32 | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Server Version" >> $GITHUB_STEP_SUMMARY
+        echo "- Install on admin PC that will host the database" >> $GITHUB_STEP_SUMMARY
+        echo "- Includes PostgreSQL server and database migration tools" >> $GITHUB_STEP_SUMMARY
+        echo "- Provides API server for client connections" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Client Version" >> $GITHUB_STEP_SUMMARY
+        echo "- Install on other PCs that will connect to the admin PC" >> $GITHUB_STEP_SUMMARY
+        echo "- Connects to server via LAN network" >> $GITHUB_STEP_SUMMARY
+        echo "- No local database required" >> $GITHUB_STEP_SUMMARY
